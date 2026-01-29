@@ -93,6 +93,13 @@ SemanticCache.configure do |c|
 
   # Cost tracking
   c.track_costs = true
+
+  # Timeout for embedding API calls in seconds (default: 30, nil = no timeout)
+  c.embedding_timeout = 30
+
+  # Maximum number of entries in the cache (default: nil = unlimited)
+  # When exceeded, the oldest entry is evicted automatically.
+  c.max_cache_size = 10_000
 end
 ```
 
@@ -128,6 +135,22 @@ Any object that responds to `write`, `entries`, `delete`, `invalidate_by_tags`, 
 ```ruby
 cache = SemanticCache.new(store: MyCustomStore.new)
 ```
+
+### Cache Size Limits
+
+Both stores support a `max_size` option. When the cache is full, the oldest entry (by creation time) is evicted automatically:
+
+```ruby
+# Via constructor
+cache = SemanticCache.new(max_size: 5_000)
+
+# Via global configuration
+SemanticCache.configure do |c|
+  c.max_cache_size = 10_000
+end
+```
+
+When `max_size` is `nil` (the default), the cache grows without limit.
 
 ## TTL & Tag-Based Invalidation
 
@@ -280,6 +303,28 @@ class ApplicationController < ActionController::Base
   end
 end
 ```
+
+## Input Validation
+
+Queries are validated before any API call is made. Passing `nil`, `""`, or whitespace-only strings raises an `ArgumentError` immediately:
+
+```ruby
+cache.fetch(nil)   { ... }  # => ArgumentError: query cannot be nil
+cache.fetch("")    { ... }  # => ArgumentError: query cannot be blank
+cache.fetch("   ") { ... }  # => ArgumentError: query cannot be blank
+```
+
+## Embedding Timeout
+
+Embedding API calls are wrapped in a configurable timeout to prevent hanging threads:
+
+```ruby
+SemanticCache.configure do |c|
+  c.embedding_timeout = 10  # seconds (default: 30)
+end
+```
+
+If the timeout is exceeded, a `SemanticCache::Error` is raised. Set to `nil` to disable the timeout.
 
 ## Demo
 
