@@ -6,18 +6,24 @@ module SemanticCache
   module Stores
     # Thread-safe in-memory cache store.
     # Good for development, testing, and single-process apps.
+    #
+    # Options:
+    #   max_size: Maximum number of entries to keep. When exceeded, the oldest
+    #             entry (by created_at) is evicted. nil = unlimited.
     class Memory
       include MonitorMixin
 
-      def initialize(**_options)
+      def initialize(max_size: nil, **_options)
         super()
         @data = {}
         @tags_index = Hash.new { |h, k| h[k] = Set.new }
+        @max_size = max_size
       end
 
-      # Store a cache entry.
+      # Store a cache entry. Evicts the oldest entry if max_size is reached.
       def write(key, entry)
         synchronize do
+          evict_oldest! if @max_size && @data.size >= @max_size && !@data.key?(key)
           @data[key] = entry
           entry.tags.each { |tag| @tags_index[tag].add(key) }
         end
@@ -72,6 +78,12 @@ module SemanticCache
       def cleanup_expired!
         expired_keys = @data.select { |_k, v| v.expired? }.keys
         expired_keys.each { |key| delete(key) }
+      end
+
+      # Evict the oldest entry (by created_at) to make room for a new one.
+      def evict_oldest!
+        oldest_key = @data.min_by { |_k, v| v.created_at }&.first
+        delete(oldest_key) if oldest_key
       end
     end
   end

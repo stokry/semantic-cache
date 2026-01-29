@@ -10,7 +10,9 @@ module SemanticCache
                   :store_options,
                   :track_costs,
                   :model_costs,
-                  :namespace
+                  :namespace,
+                  :embedding_timeout,
+                  :max_cache_size
 
     # Cost per 1K tokens (USD)
     DEFAULT_MODEL_COSTS = {
@@ -41,6 +43,8 @@ module SemanticCache
       @track_costs = true
       @model_costs = DEFAULT_MODEL_COSTS.dup
       @namespace = "semantic_cache"
+      @embedding_timeout = 30       # seconds
+      @max_cache_size = nil         # nil = unlimited
     end
 
     def cost_for(model)

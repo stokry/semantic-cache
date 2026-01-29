@@ -96,6 +96,23 @@ RSpec.describe SemanticCache::Cache do
 
       expect(cache.current_stats[:total_savings]).to be > 0
     end
+
+    context "input validation" do
+      it "raises ArgumentError for nil query" do
+        cache = described_class.new
+        expect { cache.fetch(nil) { "x" } }.to raise_error(ArgumentError, /cannot be nil/)
+      end
+
+      it "raises ArgumentError for empty query" do
+        cache = described_class.new
+        expect { cache.fetch("") { "x" } }.to raise_error(ArgumentError, /cannot be blank/)
+      end
+
+      it "raises ArgumentError for whitespace-only query" do
+        cache = described_class.new
+        expect { cache.fetch("   ") { "x" } }.to raise_error(ArgumentError, /cannot be blank/)
+      end
+    end
   end
 
   describe "#fetch_openai / #fetch_anthropic / #fetch_gemini" do
@@ -168,6 +185,50 @@ RSpec.describe SemanticCache::Cache do
 
     it "raises on invalid store type" do
       expect { described_class.new(store: :invalid) }.to raise_error(SemanticCache::ConfigurationError)
+    end
+  end
+
+  describe "max_size" do
+    it "respects max_size from constructor" do
+      emb1 = test_embedding(10)
+      emb2 = test_embedding(20)
+      emb3 = test_embedding(30)
+
+      stub_request(:post, "https://api.openai.com/v1/embeddings")
+        .to_return(
+          { status: 200, body: { object: "list", data: [{ object: "embedding", index: 0, embedding: emb1 }], model: "text-embedding-3-small", usage: { prompt_tokens: 5, total_tokens: 5 } }.to_json, headers: { "Content-Type" => "application/json" } },
+          { status: 200, body: { object: "list", data: [{ object: "embedding", index: 0, embedding: emb2 }], model: "text-embedding-3-small", usage: { prompt_tokens: 5, total_tokens: 5 } }.to_json, headers: { "Content-Type" => "application/json" } },
+          { status: 200, body: { object: "list", data: [{ object: "embedding", index: 0, embedding: emb3 }], model: "text-embedding-3-small", usage: { prompt_tokens: 5, total_tokens: 5 } }.to_json, headers: { "Content-Type" => "application/json" } }
+        )
+
+      cache = described_class.new(max_size: 2)
+
+      cache.fetch("What is Ruby?") { "a1" }
+      cache.fetch("How does Python work?") { "a2" }
+      expect(cache.size).to eq(2)
+
+      # Third entry should evict oldest
+      cache.fetch("Tell me about JavaScript") { "a3" }
+      expect(cache.size).to eq(2)
+    end
+
+    it "respects max_cache_size from configuration" do
+      emb1 = test_embedding(40)
+      emb2 = test_embedding(50)
+
+      SemanticCache.configure { |c| c.max_cache_size = 1 }
+
+      stub_request(:post, "https://api.openai.com/v1/embeddings")
+        .to_return(
+          { status: 200, body: { object: "list", data: [{ object: "embedding", index: 0, embedding: emb1 }], model: "text-embedding-3-small", usage: { prompt_tokens: 5, total_tokens: 5 } }.to_json, headers: { "Content-Type" => "application/json" } },
+          { status: 200, body: { object: "list", data: [{ object: "embedding", index: 0, embedding: emb2 }], model: "text-embedding-3-small", usage: { prompt_tokens: 5, total_tokens: 5 } }.to_json, headers: { "Content-Type" => "application/json" } }
+        )
+
+      cache = described_class.new
+      cache.fetch("What is Ruby?") { "a1" }
+      cache.fetch("How does Python work?") { "a2" }
+
+      expect(cache.size).to eq(1)
     end
   end
 end

@@ -13,7 +13,8 @@ module SemanticCache
       store_options: {},
       default_ttl: nil,
       namespace: nil,
-      track_costs: nil
+      track_costs: nil,
+      max_size: nil
     )
       config = SemanticCache.configuration
 
@@ -21,6 +22,7 @@ module SemanticCache
       @default_ttl = default_ttl || config.default_ttl
       @track_costs = track_costs.nil? ? config.track_costs : track_costs
       @namespace = namespace || config.namespace
+      @max_size = max_size || config.max_cache_size
 
       @embedding = Embedding.new(
         model: embedding_model || config.embedding_model,
@@ -43,6 +45,7 @@ module SemanticCache
     #   model: - Model name for cost tracking
     def fetch(query, ttl: nil, tags: [], model: nil, metadata: {}, &block)
       raise ArgumentError, "A block is required" unless block_given?
+      validate_query!(query)
 
       start_time = Time.now
 
@@ -133,6 +136,13 @@ module SemanticCache
 
     private
 
+    def validate_query!(query)
+      raise ArgumentError, "query cannot be nil" if query.nil?
+
+      query_str = query.to_s.strip
+      raise ArgumentError, "query cannot be blank" if query_str.empty?
+    end
+
     def find_similar(query_embedding)
       entries = @store.entries
       return nil if entries.empty?
@@ -168,11 +178,13 @@ module SemanticCache
     end
 
     def build_store(type, options)
+      store_max_size = @max_size
+
       case type
       when :memory, "memory"
-        Stores::Memory.new(**options)
+        Stores::Memory.new(max_size: store_max_size, **options)
       when :redis, "redis"
-        Stores::Redis.new(**options)
+        Stores::Redis.new(max_size: store_max_size, **options)
       when Stores::Memory, Stores::Redis
         type # Already instantiated
       else

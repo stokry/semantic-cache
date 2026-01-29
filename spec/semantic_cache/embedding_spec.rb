@@ -28,6 +28,68 @@ RSpec.describe SemanticCache::Embedding do
       embedding = described_class.new
       expect { embedding.generate("test") }.to raise_error(SemanticCache::Error)
     end
+
+    context "input validation" do
+      it "raises ArgumentError for nil input" do
+        embedding = described_class.new
+        expect { embedding.generate(nil) }.to raise_error(ArgumentError, /cannot be nil/)
+      end
+
+      it "raises ArgumentError for empty string" do
+        embedding = described_class.new
+        expect { embedding.generate("") }.to raise_error(ArgumentError, /cannot be blank/)
+      end
+
+      it "raises ArgumentError for whitespace-only string" do
+        embedding = described_class.new
+        expect { embedding.generate("   ") }.to raise_error(ArgumentError, /cannot be blank/)
+      end
+    end
+
+    context "timeout" do
+      it "wraps API call in a timeout" do
+        SemanticCache.configure { |c| c.embedding_timeout = 5 }
+
+        stub_request(:post, "https://api.openai.com/v1/embeddings")
+          .to_return do
+            sleep(10)
+            { status: 200, body: {}.to_json }
+          end
+
+        embedding = described_class.new
+        expect { embedding.generate("test") }.to raise_error(SemanticCache::Error, /timed out/)
+      end
+
+      it "respects the configured timeout value" do
+        SemanticCache.configure { |c| c.embedding_timeout = 30 }
+        embedding = described_class.new
+
+        # Access the instance variable to verify it picked up config
+        expect(embedding.instance_variable_get(:@timeout)).to eq(30)
+      end
+
+      it "skips timeout when set to nil" do
+        SemanticCache.configure { |c| c.embedding_timeout = nil }
+
+        expected = Array.new(1536) { 0.1 }
+        stub_embedding_request(embedding: expected)
+
+        embedding = described_class.new
+        result = embedding.generate("test")
+        expect(result).to eq(expected)
+      end
+
+      it "skips timeout when set to 0" do
+        SemanticCache.configure { |c| c.embedding_timeout = 0 }
+
+        expected = Array.new(1536) { 0.1 }
+        stub_embedding_request(embedding: expected)
+
+        embedding = described_class.new
+        result = embedding.generate("test")
+        expect(result).to eq(expected)
+      end
+    end
   end
 
   describe "#generate_batch" do
@@ -56,6 +118,26 @@ RSpec.describe SemanticCache::Embedding do
       expect(result.length).to eq(2)
       expect(result[0]).to eq(emb1)
       expect(result[1]).to eq(emb2)
+    end
+
+    it "raises ArgumentError for empty array" do
+      embedding = described_class.new
+      expect { embedding.generate_batch([]) }.to raise_error(ArgumentError, /non-empty Array/)
+    end
+
+    it "raises ArgumentError when not an array" do
+      embedding = described_class.new
+      expect { embedding.generate_batch("hello") }.to raise_error(ArgumentError, /non-empty Array/)
+    end
+
+    it "raises ArgumentError when array contains nil" do
+      embedding = described_class.new
+      expect { embedding.generate_batch(["ok", nil]) }.to raise_error(ArgumentError, /texts\[1\] cannot be nil/)
+    end
+
+    it "raises ArgumentError when array contains blank string" do
+      embedding = described_class.new
+      expect { embedding.generate_batch(["ok", "  "]) }.to raise_error(ArgumentError, /texts\[1\] cannot be blank/)
     end
   end
 end

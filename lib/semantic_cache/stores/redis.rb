@@ -8,14 +8,21 @@ module SemanticCache
     # Suitable for production, multi-process, and distributed apps.
     #
     # Requires the `redis` gem: gem install redis
+    #
+    # Options:
+    #   max_size: Maximum number of entries to keep. When exceeded, the oldest
+    #             entry (by created_at) is evicted. nil = unlimited.
     class Redis
-      def initialize(redis: nil, namespace: nil, **options)
+      def initialize(redis: nil, namespace: nil, max_size: nil, **options)
         @namespace = namespace || SemanticCache.configuration.namespace
         @redis = redis || connect(options)
+        @max_size = max_size
       end
 
-      # Store a cache entry.
+      # Store a cache entry. Evicts the oldest entry if max_size is reached.
       def write(key, entry)
+        evict_oldest! if @max_size && size >= @max_size
+
         full_key = namespaced_key(key)
         data = entry.to_json
 
@@ -121,6 +128,21 @@ module SemanticCache
         end
         @redis.del(full_key)
         @redis.srem(keys_set_key, full_key)
+      end
+
+      # Evict the oldest entry (by created_at) to make room for a new one.
+      def evict_oldest!
+        all_entries = entries
+        return if all_entries.empty?
+
+        oldest = all_entries.min_by(&:created_at)
+        key = @redis.smembers(keys_set_key).find do |k|
+          data = @redis.get(k)
+          next false unless data
+
+          Entry.from_json(data).query == oldest.query
+        end
+        delete_raw(key) if key
       end
     end
   end
