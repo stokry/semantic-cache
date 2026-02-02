@@ -32,6 +32,8 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
+  # Embedding provider adapters (at least one is required)
+  # ruby-openai is loaded by default; ruby_llm is optional
   spec.add_dependency "ruby-openai", "~> 7.0"
 
   spec.add_development_dependency "rake", "~> 13.0"
@@ -40,4 +42,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "redis", ">= 4.0"
   spec.add_development_dependency "webmock", "~> 3.0"
   spec.add_development_dependency "simplecov", "~> 0.22"
+  # Optional: add ruby_llm to your Gemfile for the :ruby_llm adapter
+  # gem "ruby_llm", ">= 1.0"
 end

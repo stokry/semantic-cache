@@ -3,6 +3,7 @@
 module SemanticCache
   class Configuration
     attr_accessor :similarity_threshold,
+                  :embedding_adapter,
                   :embedding_model,
                   :openai_api_key,
                   :default_ttl,
@@ -35,6 +36,7 @@ module SemanticCache
 
     def initialize
       @similarity_threshold = 0.85
+      @embedding_adapter = :openai  # :openai or :ruby_llm
       @embedding_model = "text-embedding-3-small"
       @openai_api_key = ENV["OPENAI_API_KEY"]
       @default_ttl = nil # No expiry by default

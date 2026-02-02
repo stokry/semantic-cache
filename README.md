@@ -66,7 +66,7 @@ puts cache.current_stats
 
 ## How It Works
 
-1. Your query is converted to an embedding vector via OpenAI's `text-embedding-3-small`
+1. Your query is converted to an embedding vector via the configured embedding adapter (OpenAI or RubyLLM)
 2. The cache searches for stored entries with high cosine similarity
 3. If a match exceeds the threshold (default 0.85), the cached response is returned
 4. If no match, the block executes, and the result is cached for future queries
@@ -78,10 +78,13 @@ SemanticCache.configure do |c|
   # Similarity threshold (0.0 to 1.0). Higher = stricter matching.
   c.similarity_threshold = 0.85
 
-  # Embedding model
+  # Embedding adapter: :openai (default) or :ruby_llm
+  c.embedding_adapter = :openai
+
+  # Embedding model (used by the selected adapter)
   c.embedding_model = "text-embedding-3-small"
 
-  # OpenAI API key
+  # OpenAI API key (required for :openai adapter)
   c.openai_api_key = ENV["OPENAI_API_KEY"]
 
   # Default TTL for cached entries (nil = no expiry)
@@ -102,6 +105,44 @@ SemanticCache.configure do |c|
   c.max_cache_size = 10_000
 end
 ```
+
+## Embedding Adapters
+
+SemanticCache supports multiple embedding providers. Choose the adapter that fits your stack.
+
+### OpenAI (default)
+
+Uses the `ruby-openai` gem. Requires an OpenAI API key.
+
+```ruby
+SemanticCache.configure do |c|
+  c.embedding_adapter = :openai
+  c.embedding_model = "text-embedding-3-small"
+  c.openai_api_key = ENV["OPENAI_API_KEY"]
+end
+```
+
+### RubyLLM
+
+Uses the [ruby_llm](https://github.com/alexrudall/ruby_llm) gem. Supports all embedding providers that RubyLLM supports: **OpenAI**, **Gemini**, **Mistral**, **Ollama**, **Bedrock**, and more — with a single adapter and no OpenAI dependency if you don’t need it.
+
+Add the gem:
+
+```ruby
+# Gemfile
+gem "ruby_llm"
+```
+
+Configure SemanticCache to use the RubyLLM adapter:
+
+```ruby
+SemanticCache.configure do |c|
+  c.embedding_adapter = :ruby_llm
+  c.embedding_model = "text-embedding-3-small"  # or any model your RubyLLM provider supports
+end
+```
+
+Then configure your embedding provider (API keys, etc.) as required by the [ruby_llm](https://github.com/alexrudall/ruby_llm) gem. If the `ruby_llm` gem is not installed, using `embedding_adapter = :ruby_llm` raises a `SemanticCache::ConfigurationError` with instructions to add the gem.
 
 ## Cache Stores
 

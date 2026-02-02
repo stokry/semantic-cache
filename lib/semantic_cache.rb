@@ -2,6 +2,9 @@
 
 require_relative "semantic_cache/version"
 require_relative "semantic_cache/configuration"
+require_relative "semantic_cache/adapters/base"
+require_relative "semantic_cache/adapters/openai"
+require_relative "semantic_cache/adapters/ruby_llm"
 require_relative "semantic_cache/embedding"
 require_relative "semantic_cache/similarity"
 require_relative "semantic_cache/stores/memory"

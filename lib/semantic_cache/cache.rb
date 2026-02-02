@@ -9,6 +9,7 @@ module SemanticCache
     def initialize(
       similarity_threshold: nil,
       embedding_model: nil,
+      embedding_adapter: nil,
       store: nil,
       store_options: {},
       default_ttl: nil,
@@ -26,7 +27,8 @@ module SemanticCache
 
       @embedding = Embedding.new(
         model: embedding_model || config.embedding_model,
-        api_key: config.openai_api_key
+        api_key: config.openai_api_key,
+        adapter: embedding_adapter
       )
 
       @store = build_store(store || config.store, store_options.empty? ? config.store_options : store_options)

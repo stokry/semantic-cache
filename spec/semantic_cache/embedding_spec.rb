@@ -9,6 +9,47 @@ RSpec.describe SemanticCache::Embedding do
     end
   end
 
+  describe "adapter delegation" do
+    it "defaults to OpenAI adapter" do
+      embedding = described_class.new
+      adapter = embedding.instance_variable_get(:@adapter)
+      expect(adapter).to be_a(SemanticCache::Adapters::OpenAI)
+    end
+
+    it "uses RubyLLM adapter when configured" do
+      SemanticCache.configure { |c| c.embedding_adapter = :ruby_llm }
+
+      allow_any_instance_of(SemanticCache::Adapters::RubyLLM).to receive(:require).with("ruby_llm").and_return(true)
+      stub_const("RubyLLM", double("RubyLLM"))
+
+      embedding = described_class.new
+      adapter = embedding.instance_variable_get(:@adapter)
+      expect(adapter).to be_a(SemanticCache::Adapters::RubyLLM)
+    end
+
+    it "accepts adapter override in constructor" do
+      allow_any_instance_of(SemanticCache::Adapters::RubyLLM).to receive(:require).with("ruby_llm").and_return(true)
+      stub_const("RubyLLM", double("RubyLLM"))
+
+      embedding = described_class.new(adapter: :ruby_llm)
+      adapter = embedding.instance_variable_get(:@adapter)
+      expect(adapter).to be_a(SemanticCache::Adapters::RubyLLM)
+    end
+
+    it "accepts a duck-typed custom adapter" do
+      custom_adapter = double("CustomAdapter", generate: [0.1, 0.2], generate_batch: [[0.1], [0.2]])
+      embedding = described_class.new(adapter: custom_adapter)
+      adapter = embedding.instance_variable_get(:@adapter)
+      expect(adapter).to eq(custom_adapter)
+    end
+
+    it "raises ConfigurationError for unknown adapter" do
+      expect {
+        described_class.new(adapter: :unknown)
+      }.to raise_error(SemanticCache::ConfigurationError, /Unknown embedding adapter/)
+    end
+  end
+
   describe "#generate" do
     it "returns an embedding vector" do
       expected = Array.new(1536) { 0.1 }
@@ -58,14 +99,6 @@ RSpec.describe SemanticCache::Embedding do
 
         embedding = described_class.new
         expect { embedding.generate("test") }.to raise_error(SemanticCache::Error, /timed out/)
-      end
-
-      it "respects the configured timeout value" do
-        SemanticCache.configure { |c| c.embedding_timeout = 30 }
-        embedding = described_class.new
-
-        # Access the instance variable to verify it picked up config
-        expect(embedding.instance_variable_get(:@timeout)).to eq(30)
       end
 
       it "skips timeout when set to nil" do

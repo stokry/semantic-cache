@@ -26,6 +26,10 @@ RSpec.describe SemanticCache::Configuration do
       expect(config.track_costs).to be true
     end
 
+    it "defaults to openai embedding adapter" do
+      expect(config.embedding_adapter).to eq(:openai)
+    end
+
     it "has a default embedding timeout of 30 seconds" do
       expect(config.embedding_timeout).to eq(30)
     end
@@ -63,6 +67,11 @@ RSpec.describe SemanticCache::Configuration do
     it "allows disabling timeout with nil" do
       config.embedding_timeout = nil
       expect(config.embedding_timeout).to be_nil
+    end
+
+    it "allows setting embedding_adapter to :ruby_llm" do
+      config.embedding_adapter = :ruby_llm
+      expect(config.embedding_adapter).to eq(:ruby_llm)
     end
   end
 end
