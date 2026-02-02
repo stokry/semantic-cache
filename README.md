@@ -124,7 +124,7 @@ end
 
 ### RubyLLM
 
-Uses the [ruby_llm](https://github.com/alexrudall/ruby_llm) gem. Supports all embedding providers that RubyLLM supports: **OpenAI**, **Gemini**, **Mistral**, **Ollama**, **Bedrock**, and more — with a single adapter and no OpenAI dependency if you don’t need it.
+Uses the [ruby_llm](https://github.com/crmne/ruby_llm) gem. Supports all embedding providers that RubyLLM supports: **OpenAI**, **Gemini**, **Mistral**, **Ollama**, **Bedrock**, and more — with a single adapter and no OpenAI dependency if you don’t need it.
 
 Add the gem:
 
@@ -142,7 +142,7 @@ SemanticCache.configure do |c|
 end
 ```
 
-Then configure your embedding provider (API keys, etc.) as required by the [ruby_llm](https://github.com/alexrudall/ruby_llm) gem. If the `ruby_llm` gem is not installed, using `embedding_adapter = :ruby_llm` raises a `SemanticCache::ConfigurationError` with instructions to add the gem.
+Then configure your embedding provider (API keys, etc.) as required by the [ruby_llm](https://github.com/crmne/ruby_llm) gem. If the `ruby_llm` gem is not installed, using `embedding_adapter = :ruby_llm` raises a `SemanticCache::ConfigurationError` with instructions to add the gem.
 
 ## Cache Stores
 
