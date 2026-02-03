@@ -124,7 +124,7 @@ end
 
 ### RubyLLM
 
-Uses the [ruby_llm](https://github.com/crmne/ruby_llm) gem. Supports all embedding providers that RubyLLM supports: **OpenAI**, **Gemini**, **Mistral**, **Ollama**, **Bedrock**, and more — with a single adapter and no OpenAI dependency if you don’t need it.
+Uses the [ruby_llm](https://github.com/crmne/ruby_llm) gem. Supports all embedding providers that RubyLLM supports: **OpenAI**, **Gemini**, **Mistral**, **Ollama**, **Bedrock**, and more — with a single adapter and no OpenAI dependency if you don't need it.
 
 Add the gem:
 
@@ -142,7 +142,48 @@ SemanticCache.configure do |c|
 end
 ```
 
-Then configure your embedding provider (API keys, etc.) as required by the [ruby_llm](https://github.com/crmne/ruby_llm) gem. If the `ruby_llm` gem is not installed, using `embedding_adapter = :ruby_llm` raises a `SemanticCache::ConfigurationError` with instructions to add the gem.
+Then configure your embedding provider via RubyLLM. Here are examples for popular providers:
+
+```ruby
+# config/initializers/ruby_llm.rb (Rails) or anywhere before using SemanticCache
+
+# OpenAI
+RubyLLM.configure do |config|
+  config.openai_api_key = ENV["OPENAI_API_KEY"]
+end
+
+# Google Gemini
+RubyLLM.configure do |config|
+  config.gemini_api_key = ENV["GEMINI_API_KEY"]
+end
+
+# Mistral
+RubyLLM.configure do |config|
+  config.mistral_api_key = ENV["MISTRAL_API_KEY"]
+end
+
+# Ollama (local)
+RubyLLM.configure do |config|
+  config.ollama_api_base = "http://localhost:11434/v1"
+end
+
+# AWS Bedrock (uses AWS credential chain by default)
+RubyLLM.configure do |config|
+  config.bedrock_region = "us-east-1"
+  # Optional: explicit credentials
+  # config.bedrock_api_key = ENV["AWS_ACCESS_KEY_ID"]
+  # config.bedrock_secret_key = ENV["AWS_SECRET_ACCESS_KEY"]
+end
+```
+
+**Supported embedding models** (varies by provider):
+- OpenAI: `text-embedding-3-small`, `text-embedding-3-large`, `text-embedding-ada-002`
+- Gemini: `text-embedding-004`
+- Mistral: `mistral-embed`
+- Ollama: any model with embedding support (e.g., `nomic-embed-text`, `mxbai-embed-large`)
+- Bedrock: `amazon.titan-embed-text-v1`, `cohere.embed-english-v3`, etc.
+
+If the `ruby_llm` gem is not installed, using `embedding_adapter = :ruby_llm` raises a `SemanticCache::ConfigurationError` with instructions to add the gem.
 
 ## Cache Stores
 
